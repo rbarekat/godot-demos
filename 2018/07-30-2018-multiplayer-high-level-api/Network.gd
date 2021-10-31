@@ -1,10 +1,11 @@
 extends Node
 
 const DEFAULT_IP = '127.0.0.1'
-const DEFAULT_PORT = 31400
+const DEFAULT_PORT = 13140
 const MAX_PLAYERS = 5
 
 var players = { }
+var ball_positions = [Vector2(100, 280), Vector2(200, 280), Vector2(300, 280)]
 var self_data = { name = '', position = Vector2(360, 180) }
 
 signal player_disconnected
@@ -32,6 +33,7 @@ func _connected_to_server():
   var local_player_id = get_tree().get_network_unique_id()
   players[local_player_id] = self_data
   rpc('_send_player_info', local_player_id, self_data)
+  rpc('_send_ball_info')
 
 func _on_player_disconnected(id):
   players.erase(id)
@@ -59,6 +61,24 @@ remote func _send_player_info(id, info):
   new_player.set_network_master(id)
   $'/root/Game/'.add_child(new_player)
   new_player.init(info.name, info.position, true)
+  
+remote func init_balls():
+  for ball_pos in ball_positions:
+    var new_ball = load('res://Ball.tscn').instance()
+    new_ball.set_network_master(1)
+    $'/root/Game/'.add_child(new_ball)
+    new_ball.init(ball_pos)
+
+remote func _send_ball_info():
+  print("sending ball info")
+  for ball_pos in ball_positions:
+    var new_ball = load('res://Ball.tscn').instance()
+    new_ball.set_network_master(1)
+    $'/root/Game/'.add_child(new_ball)
+    new_ball.init(ball_pos)
 
 func update_position(id, position):
   players[id].position = position
+  
+func update_ball_position(id, position):
+  ball_positions[id].position = position

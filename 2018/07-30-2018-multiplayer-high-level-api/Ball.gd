@@ -1,16 +1,37 @@
-extends RigidBody2D
+extends KinematicBody2D
 
 var reset_state : bool = false
+var vel : Vector2 = Vector2.ZERO
+var slave_position : Vector2
+var slave_vel : Vector2
 
 func _ready():
   _on_Timer_timeout()
 
 func _on_Timer_timeout():
   reset_state = true
-  linear_velocity = Vector2.ZERO
+  vel = Vector2.ZERO
   $Timer.start()
 
-func _integrate_forces(state):
-  if reset_state:
-    state.transform = Transform2D(0.0, Vector2(400, 400))
-    reset_state = false
+func _process(delta):
+  
+  if get_tree().is_network_server():
+    Network.update_ball_position(int(name), position)
+
+  if is_network_master():    
+    rset_unreliable('slave_position', position)
+    rset_unreliable('slave_vel', vel)
+    move_and_collide(vel)
+    if reset_state:
+      vel = Vector2.ZERO
+      position = Vector2(400, 400)
+      reset_state = false
+  else:
+    move_and_collide(vel)
+    position = slave_position
+  
+  if get_tree().is_network_server():
+    Network.update_position(int(name), position)
+
+func init(start_position):
+  global_position = start_position
